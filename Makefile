@@ -51,7 +51,7 @@ mypy: $(VIRTUAL_ENV)
 ruff: $(VIRTUAL_ENV)
 	$(VIRTUAL_ENV)/bin/ruff check $(PACKAGE)
 
-$(PACKAGE)/%.c: $(PACKAGE)/%.pyx $(PACKAGE)/%.pxd
+$(PACKAGE)/%.c: $(PACKAGE)/%.py $(PACKAGE)/%.pxd
 	$(VIRTUAL_ENV)/bin/cython -a $<
 
 cyt: $(PACKAGE)/router.c $(PACKAGE)/routes.c

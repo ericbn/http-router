@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Pattern, cast
+from typing import TYPE_CHECKING, Any, Callable, Pattern
 from urllib.parse import unquote
 
 from .router import Router
 from .utils import identity, parse_path
 
 if TYPE_CHECKING:
-    from .types import TMethods
+    from .types import TMethods, TPath
 
 
 class RouteMatch:
@@ -20,7 +20,7 @@ class RouteMatch:
         path: bool,
         method: bool,
         target=None,
-        params: Mapping[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
     ):
         self.path = path
         self.method = method
@@ -46,7 +46,7 @@ class Route:
         self.methods = methods
         self.target = target
 
-    def __lt__(self, route: "Route") -> bool:
+    def __lt__(self, route: Route) -> bool:
         assert isinstance(route, Route), "Only routes are supported"
         return self.path < route.path
 
@@ -54,7 +54,7 @@ class Route:
         """Is the route match the path."""
         methods = self.methods
         return RouteMatch(
-            path == self.path, methods is None or (method in methods), self.target,
+            path == self.path, not methods or (method in methods), self.target,
         )
 
 
@@ -65,7 +65,7 @@ class DynamicRoute(Route):
 
     def __init__(
         self,
-        path: str,
+        path: TPath,
         methods: TMethods | None = None,
         target: Any = None,
         pattern: Pattern | None = None,
@@ -76,7 +76,7 @@ class DynamicRoute(Route):
             assert pattern, "Invalid path"
         self.pattern = pattern
         self.params = params or {}
-        super(DynamicRoute, self).__init__(path, methods, target)
+        super(DynamicRoute, self).__init__(path, methods, target)  # type: ignore[arg-type]
 
     def match(self, path: str, method: str) -> RouteMatch:
         match = self.pattern.match(path)
@@ -85,7 +85,7 @@ class DynamicRoute(Route):
 
         return RouteMatch(
             True,
-            not self.methods or method in self.methods,
+            not self.methods or (method in self.methods),
             self.target,
             {
                 key: self.params.get(key, identity)(unquote(value))
@@ -130,8 +130,8 @@ class Mount(PrefixedRoute):
     def match(self, path: str, method: str) -> RouteMatch:
         """Is the route match the path."""
         match: RouteMatch = super(Mount, self).match(path, method)
-        if match:
-            target = cast("Callable", self.target)
+        if match.path and match.method:
+            target: Callable = self.target
             return target(path[len(self.path) :], method)
 
         return match

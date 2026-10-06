@@ -43,7 +43,7 @@ class Router:
         if self.trim_last_slash:
             path = path.rstrip("/")
 
-        match = self.match(path, method)
+        match: RouteMatch = self.match(path, method)
         if not match.path:
             raise self.NotFoundError(path, method)
 
@@ -65,8 +65,11 @@ class Router:
     @lru_cache(maxsize=1024)  # noqa: B019
     def match(self, path: str, method: str) -> RouteMatch:
         """Search a matched target for the given path and method."""
-        neighbour = None
-        for route in self.plain.get(path, self.dynamic):
+        route: Route
+        routes: list[Route] = self.plain.get(path, self.dynamic)
+        match: RouteMatch
+        neighbour: RouteMatch | None = None
+        for route in routes:
             match = route.match(path, method)
             if match.path:
                 if match.method:
@@ -93,7 +96,6 @@ class Router:
             methods = {m.upper() for m in methods or []}
 
         routes = []
-
         for src in paths:
             path = src
             if self.trim_last_slash and isinstance(path, str):
